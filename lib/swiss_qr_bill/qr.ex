@@ -1,10 +1,12 @@
 defmodule SwissQRBill.QR do
+  alias SwissQRBill.SPS_2_3, as: Spec
+
   @address_schema [
     name: [type: :string],
     street: [type: :string],
     building_number: [type: :string],
-    city: [type: :string, required: true],
-    zip_code: [type: :string, required: true],
+    town: [type: :string, required: true],
+    postal_code: [type: :string, required: true],
     country: [type: :string, required: true]
   ]
 
@@ -56,10 +58,10 @@ defmodule SwissQRBill.QR do
   end
 
   defp generate_qr_code_svg(data) do
-    with {:ok, payload} <- build_payload(data) do
+    with {:ok, payload} <- Spec.build_payload(data) do
       svg_settings = %QRCode.Render.SvgSettings{
-        image: {"priv/swiss_qr_bill/assets/CH-Kreuz_7mm.svg", 70}
-        # structure: :minify
+        image: {"priv/swiss_qr_bill/assets/CH-Kreuz_7mm.svg", 70},
+        structure: :minify
       }
 
       payload
@@ -67,67 +69,4 @@ defmodule SwissQRBill.QR do
       |> QRCode.render(:svg, svg_settings)
     end
   end
-
-  def build_payload(data) do
-    payload =
-      [
-        "SPC",
-        "0200",
-        "1",
-        data[:iban],
-        format_address(data[:creditor]),
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        format_amount(data[:amount]),
-        data[:currency],
-        format_address(data[:debtor]),
-        format_reference_type(data[:reference_type] || :non),
-        data[:reference],
-        data[:additional_info],
-        "EPD"
-      ]
-      |> Enum.join("\r\n")
-
-    {:ok, payload}
-  end
-
-  defp format_address(address) when is_map(address) do
-    [
-      "S",
-      address[:name],
-      address[:street],
-      address[:building_number],
-      address[:zip_code],
-      address[:city],
-      address[:country]
-    ]
-    |> Enum.join("\r\n")
-  end
-
-  defp format_address(_),
-    do:
-      [
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
-      ]
-      |> Enum.join("\r\n")
-
-  defp format_amount(amount) when is_float(amount),
-    do: :erlang.float_to_binary(amount, decimals: 2)
-
-  defp format_amount(_), do: ""
-
-  defp format_reference_type(:qrr), do: "QRR"
-  defp format_reference_type(:scor), do: "SCOR"
-  defp format_reference_type(:non), do: "NON"
 end
