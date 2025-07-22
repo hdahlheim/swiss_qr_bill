@@ -28,6 +28,11 @@ defmodule SwissQRBill.SPS_2_3 do
       ]
       |> Enum.join("\r\n")
 
+    payload =
+      if data[:alternative_procedures],
+        do: Enum.join(data[:alternative_procedures], "\r\n"),
+        else: payload
+
     {:ok, payload}
   end
 
@@ -35,6 +40,9 @@ defmodule SwissQRBill.SPS_2_3 do
     # In version 2.3 of QR Bill specification only the structured address type `S` is supported.
     # Older specifications supported the type `K` where address line 1 (street) and 2 (building number)
     # could be combined into one line (address line 1).
+    #
+    # Version 2.3 of QR Bill specification allows the address line 1 and to to be combined in type `S`
+    # but the address information has to be compleat when a payment is attempted.
     [
       "S",
       address[:name],
@@ -62,6 +70,9 @@ defmodule SwissQRBill.SPS_2_3 do
 
   defp format_amount(amount) when is_float(amount),
     do: :erlang.float_to_binary(amount, decimals: 2)
+
+  defp format_amount(amount) when is_integer(amount),
+    do: Integer.to_string(amount) <> ".00"
 
   defp format_amount(_), do: ""
 
